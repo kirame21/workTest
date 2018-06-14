@@ -1,0 +1,127 @@
+import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.support.ui.Select;
+import org.testng.Assert;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.DataProvider;
+import org.testng.annotations.Test;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+public class WorkAutodocTest2 {
+    private static WebDriver driver;
+
+    @DataProvider
+    public Object[][] testData1() {
+        return new Object[][] {
+                new Object[] {"https://www.autodoc.de/", "Artikelnummer"},
+        };
+    }
+
+    @DataProvider
+    public Object[][] testData2(){
+        return new Object[][] {
+                new Object[] {"https://www.autodoc.de/", "Bremsscheibe"},
+        };
+    }
+
+    @BeforeTest
+    public static void setUp() {
+        driver = new FirefoxDriver();
+        driver.manage().window().maximize();
+        driver.manage().timeouts().implicitlyWait(25, TimeUnit.SECONDS);
+    }
+
+    @Test (dataProvider = "testData1")
+    public void foundDetail(String url, String article) throws InterruptedException {
+        driver.get(url);
+        WebElement searchField = driver.findElement(By.id("search"));
+        String detailID = "7496D";
+        searchField.sendKeys(detailID, Keys.RETURN);
+
+        WebElement firstDetail = driver.findElement(By.className("all_desc_item"));
+        WebElement articleNumber = firstDetail.findElement(By.className("article_number"));
+        String articleNumberS = articleNumber.getText();
+        Assert.assertEquals(articleNumberS, article + ": " + detailID);
+        System.out.println("По артиклу " + detailID + " найдена делаль");
+
+        WebElement addToBasket = firstDetail.findElement(By.className("still_add_to_basket"));
+        Assert.assertTrue(addToBasket.isEnabled());
+        addToBasket.click();
+
+        Thread.sleep(2000);
+        WebElement artNumberBasket = driver.findElement(By.className("info_count"));
+        String artNumberBasketS = artNumberBasket.getAttribute("innerHTML");
+        WebElement countDetails = firstDetail.findElement(By.id("form_"));
+        String countDetailsS = countDetails.getAttribute("value");
+        Assert.assertEquals(countDetailsS, artNumberBasketS);
+
+        WebElement basket = driver.findElement(By.className("count"));
+        basket.click();
+        Thread.sleep(3000);
+        WebElement theDetailBasket = driver.findElement(By.className("nr"));
+        String theDetailBasketS = theDetailBasket.getText();
+        Assert.assertEquals((article + ": ").toUpperCase() + detailID, theDetailBasketS);
+        Thread.sleep(2000);
+        driver.findElement(By.cssSelector("a.close.delBtn")).click();
+        Thread.sleep(1000);
+    }
+
+    @Test(dataProvider = "testData2")
+    public void foundDetails(String url, String category) throws InterruptedException {
+        driver.get(url);
+        WebElement searchField = driver.findElement(By.id("search"));
+        String brend = "BOSCH";
+
+        new Select(driver.findElement(By.id("form_maker_id"))).selectByValue("121");
+        Thread.sleep(1000);
+        new Select(driver.findElement(By.id("form_model_id"))).selectByValue("493");
+        Thread.sleep(1000);
+        new Select(driver.findElement(By.id("form_car_id"))).selectByValue("5715");
+
+        Thread.sleep(1000);
+        searchField.sendKeys(category, Keys.RETURN);
+        driver.findElement(By.cssSelector("img[alt=\"BOSCH\"]")).click();
+        Thread.sleep(1000);
+
+        List<WebElement> details = driver.findElements(By.linkText(brend + " " + category));
+        int detailsSize = details.size();
+        System.out.println("По запросу найдено деталей в количестве: " + detailsSize + " шт");
+        for (WebElement e : details) {
+            Assert.assertTrue(e.isDisplayed());
+    }
+
+        List<WebElement> mainClasses = driver.findElements(By.xpath(".//*[@id='search_page_product']"));
+        int mainSize = mainClasses.size();
+        System.out.println("Найдено валидных кнопок в количестве: " + (mainSize-10) + " шт");
+        int i = 0;
+        for (WebElement g : mainClasses) {
+            i++;
+            if (i > detailsSize)
+                break;
+            Thread.sleep(3000);
+            g.click();
+        }
+
+        Thread.sleep(4000);
+        WebElement countBasket = driver.findElement(By.className("count"));
+        String artNumberBasketS = countBasket.getAttribute("innerHTML");
+        WebElement countDetails = driver.findElement(By.id("form_"));
+        String countDetailsS = countDetails.getAttribute("value");
+        int detailsValue = Integer.parseInt(countDetailsS);
+        Thread.sleep(3000);
+        System.out.println("Добавлено в корзину деталей в количестве: " + artNumberBasketS + " шт: "  +
+                detailsSize + " деталей по " + detailsValue + " шт");
+        Assert.assertEquals(artNumberBasketS, detailsSize*detailsValue + "");
+    }
+
+    @AfterTest
+    public static void tearDawn() {
+        driver.quit();
+    }
+}
